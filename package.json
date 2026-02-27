@@ -1,0 +1,31 @@
+{
+  "name": "@clawos/framework",
+  "version": "1.0.0",
+  "description": "ClawOS — Intelligent meta-framework that builds production-ready frameworks",
+  "author": "Victor De Marco",
+  "license": "MIT",
+  "type": "module",
+  "main": ".clawos/index.js",
+  "exports": {
+    ".": "./.clawos/index.js",
+    "./core": "./.clawos/core/index.js",
+    "./domains/*": "./.clawos/domains/*.js",
+    "./archetypes/*": "./.clawos/archetypes/*.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "framework-builder",
+    "meta-framework",
+    "code-generator",
+    "claude-code",
+    "architecture",
+    "scaffolding"
+  ],
+  "scripts": {
+    "validate": "node .clawos/core/validator/run-validation.js",
+    "test": "node --test tests/",
+    "lint": "echo 'No external linter configured — using built-in validation'"
+  }
+}

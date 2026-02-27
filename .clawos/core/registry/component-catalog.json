@@ -1,0 +1,762 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-02-27",
+  "components": [
+    {
+      "id": "error-handling",
+      "name": "Error Handling",
+      "category": "pattern",
+      "domain": ["*"],
+      "tags": ["error", "exception", "resilience", "fault-tolerance"],
+      "description": "Structured error hierarchy with typed error classes, error boundaries, and centralized error formatting for consistent error propagation across layers.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["error-classes", "error-boundary", "error-formatter"],
+      "dependencies": [],
+      "files": [
+        { "path": "src/errors/base-error.js", "type": "source" },
+        { "path": "src/errors/error-codes.js", "type": "source" },
+        { "path": "src/errors/error-handler.js", "type": "source" },
+        { "path": "tests/errors/error-handler.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "logging",
+      "name": "Logging System",
+      "category": "pattern",
+      "domain": ["*"],
+      "tags": ["logging", "observability", "debug", "structured-logging"],
+      "description": "Structured logging with configurable transports, log levels, contextual metadata, and child logger support for request-scoped tracing.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["logger", "log-transports", "log-formatter"],
+      "dependencies": ["config-system"],
+      "files": [
+        { "path": "src/logging/logger.js", "type": "source" },
+        { "path": "src/logging/transports.js", "type": "source" },
+        { "path": "src/logging/formatters.js", "type": "source" },
+        { "path": "tests/logging/logger.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "config-system",
+      "name": "Configuration System",
+      "category": "pattern",
+      "domain": ["*"],
+      "tags": ["config", "environment", "settings", "dotenv"],
+      "description": "Layered configuration loader supporting environment variables, JSON/YAML files, CLI flags, and defaults with schema validation and type coercion.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["config-loader", "config-schema", "env-parser"],
+      "dependencies": [],
+      "files": [
+        { "path": "src/config/config-loader.js", "type": "source" },
+        { "path": "src/config/config-schema.js", "type": "source" },
+        { "path": "src/config/defaults.js", "type": "source" },
+        { "path": "config/default.json", "type": "config" },
+        { "path": "tests/config/config-loader.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "plugin-loader",
+      "name": "Plugin Loader",
+      "category": "pattern",
+      "domain": ["api", "cli", "automation", "plugin"],
+      "tags": ["plugin", "extensibility", "loader", "dynamic-import"],
+      "description": "Dynamic plugin discovery and loading system with lifecycle hooks, dependency ordering, and sandboxed execution contexts.",
+      "archetype_compatibility": ["monolith", "modular", "pipeline"],
+      "provides": ["plugin-manager", "plugin-interface", "plugin-lifecycle"],
+      "dependencies": ["config-system", "logging", "error-handling"],
+      "files": [
+        { "path": "src/plugins/plugin-manager.js", "type": "source" },
+        { "path": "src/plugins/plugin-interface.js", "type": "source" },
+        { "path": "src/plugins/plugin-loader.js", "type": "source" },
+        { "path": "tests/plugins/plugin-manager.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "middleware-chain",
+      "name": "Middleware Chain",
+      "category": "pattern",
+      "domain": ["api", "cli", "automation"],
+      "tags": ["middleware", "pipeline", "chain-of-responsibility", "composable"],
+      "description": "Composable middleware pipeline with before/after hooks, error middleware, and context propagation for processing request-response cycles.",
+      "archetype_compatibility": ["microservice", "monolith", "pipeline", "modular"],
+      "provides": ["middleware-runner", "middleware-interface", "context-builder"],
+      "dependencies": ["error-handling", "logging"],
+      "files": [
+        { "path": "src/middleware/middleware-runner.js", "type": "source" },
+        { "path": "src/middleware/compose.js", "type": "source" },
+        { "path": "tests/middleware/middleware-runner.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "event-bus",
+      "name": "Event Bus",
+      "category": "pattern",
+      "domain": ["*"],
+      "tags": ["events", "pub-sub", "decoupling", "async"],
+      "description": "Centralized event bus with typed events, wildcard subscriptions, event history, replay capability, and async listener support.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["event-emitter", "event-types", "event-history"],
+      "dependencies": [],
+      "files": [
+        { "path": "src/events/event-bus.js", "type": "source" },
+        { "path": "src/events/event-types.js", "type": "source" },
+        { "path": "tests/events/event-bus.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "state-machine",
+      "name": "State Machine",
+      "category": "pattern",
+      "domain": ["api", "cli", "automation", "ai-agent"],
+      "tags": ["state", "fsm", "transitions", "workflow"],
+      "description": "Finite state machine with declarative transition definitions, guard conditions, entry/exit actions, and transition history tracking.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["state-machine", "state-transitions", "state-guards"],
+      "dependencies": ["event-bus", "error-handling"],
+      "files": [
+        { "path": "src/state/state-machine.js", "type": "source" },
+        { "path": "src/state/transitions.js", "type": "source" },
+        { "path": "tests/state/state-machine.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "dependency-injection",
+      "name": "Dependency Injection",
+      "category": "pattern",
+      "domain": ["api", "cli", "automation"],
+      "tags": ["di", "ioc", "container", "inversion-of-control"],
+      "description": "Lightweight IoC container with constructor injection, lifecycle scopes (singleton, transient, scoped), and auto-wiring support.",
+      "archetype_compatibility": ["microservice", "monolith", "modular"],
+      "provides": ["di-container", "injectable-decorator", "service-registry"],
+      "dependencies": ["error-handling"],
+      "files": [
+        { "path": "src/di/container.js", "type": "source" },
+        { "path": "src/di/decorators.js", "type": "source" },
+        { "path": "src/di/scopes.js", "type": "source" },
+        { "path": "tests/di/container.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "factory",
+      "name": "Factory Pattern",
+      "category": "pattern",
+      "domain": ["*"],
+      "tags": ["factory", "creational", "builder", "abstract-factory"],
+      "description": "Generic factory and builder pattern implementations for consistent object creation with validation, defaults, and fluent builder APIs.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["base-factory", "builder-interface", "factory-registry"],
+      "dependencies": ["error-handling"],
+      "files": [
+        { "path": "src/patterns/factory.js", "type": "source" },
+        { "path": "src/patterns/builder.js", "type": "source" },
+        { "path": "tests/patterns/factory.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "repository",
+      "name": "Repository Pattern",
+      "category": "pattern",
+      "domain": ["api", "data"],
+      "tags": ["repository", "data-access", "crud", "persistence"],
+      "description": "Abstract repository interface with in-memory and adapter-backed implementations for data access abstraction with query builder support.",
+      "archetype_compatibility": ["microservice", "monolith", "modular"],
+      "provides": ["base-repository", "query-builder", "repository-interface"],
+      "dependencies": ["error-handling", "logging"],
+      "files": [
+        { "path": "src/data/base-repository.js", "type": "source" },
+        { "path": "src/data/query-builder.js", "type": "source" },
+        { "path": "tests/data/base-repository.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "observer",
+      "name": "Observer Pattern",
+      "category": "pattern",
+      "domain": ["*"],
+      "tags": ["observer", "reactive", "subscription", "notification"],
+      "description": "Type-safe observer pattern with subscription management, notification filtering, and automatic cleanup for decoupled component communication.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "modular"],
+      "provides": ["observable", "observer-interface", "subscription-manager"],
+      "dependencies": [],
+      "files": [
+        { "path": "src/patterns/observable.js", "type": "source" },
+        { "path": "src/patterns/subscription.js", "type": "source" },
+        { "path": "tests/patterns/observable.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "command-pattern",
+      "name": "Command Pattern",
+      "category": "pattern",
+      "domain": ["cli", "api", "automation", "ai-agent"],
+      "tags": ["command", "undo", "redo", "action", "cqrs"],
+      "description": "Command pattern with undo/redo stack, command history, macro recording, and async command execution for encapsulating operations as objects.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["command-interface", "command-invoker", "command-history"],
+      "dependencies": ["error-handling", "logging"],
+      "files": [
+        { "path": "src/patterns/command.js", "type": "source" },
+        { "path": "src/patterns/command-invoker.js", "type": "source" },
+        { "path": "tests/patterns/command.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "cors",
+      "name": "CORS Middleware",
+      "category": "middleware",
+      "domain": ["api"],
+      "tags": ["cors", "http", "security", "cross-origin"],
+      "description": "Configurable CORS middleware with origin whitelisting, credential support, preflight caching, and per-route override capability.",
+      "archetype_compatibility": ["microservice", "monolith"],
+      "provides": ["cors-middleware", "cors-config"],
+      "dependencies": ["config-system"],
+      "files": [
+        { "path": "src/middleware/cors.js", "type": "source" },
+        { "path": "tests/middleware/cors.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "auth-jwt",
+      "name": "JWT Authentication",
+      "category": "middleware",
+      "domain": ["api"],
+      "tags": ["auth", "jwt", "authentication", "token", "security"],
+      "description": "JWT-based authentication middleware with token generation, verification, refresh token rotation, and role-based access control integration.",
+      "archetype_compatibility": ["microservice", "monolith"],
+      "provides": ["jwt-middleware", "token-service", "auth-guard"],
+      "dependencies": ["config-system", "error-handling", "crypto-utils"],
+      "files": [
+        { "path": "src/middleware/auth-jwt.js", "type": "source" },
+        { "path": "src/auth/token-service.js", "type": "source" },
+        { "path": "tests/middleware/auth-jwt.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "rate-limiter",
+      "name": "Rate Limiter",
+      "category": "middleware",
+      "domain": ["api"],
+      "tags": ["rate-limit", "throttle", "security", "ddos"],
+      "description": "Sliding-window and token-bucket rate limiting with in-memory and external store support, per-client tracking, and configurable response headers.",
+      "archetype_compatibility": ["microservice", "monolith"],
+      "provides": ["rate-limiter-middleware", "rate-limiter-store"],
+      "dependencies": ["config-system", "cache-layer"],
+      "files": [
+        { "path": "src/middleware/rate-limiter.js", "type": "source" },
+        { "path": "src/middleware/rate-limiter-store.js", "type": "source" },
+        { "path": "tests/middleware/rate-limiter.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "request-validator",
+      "name": "Request Validator",
+      "category": "middleware",
+      "domain": ["api"],
+      "tags": ["validation", "schema", "input", "sanitization"],
+      "description": "Request validation middleware with JSON Schema support, body/query/params validation, custom validators, and sanitization pipelines.",
+      "archetype_compatibility": ["microservice", "monolith"],
+      "provides": ["validator-middleware", "schema-registry", "sanitizer"],
+      "dependencies": ["error-handling"],
+      "files": [
+        { "path": "src/middleware/request-validator.js", "type": "source" },
+        { "path": "src/validation/schema-registry.js", "type": "source" },
+        { "path": "tests/middleware/request-validator.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "response-formatter",
+      "name": "Response Formatter",
+      "category": "middleware",
+      "domain": ["api"],
+      "tags": ["response", "format", "serialization", "envelope"],
+      "description": "Standardized response envelope with success/error formatting, pagination metadata, HATEOAS links, and content negotiation support.",
+      "archetype_compatibility": ["microservice", "monolith"],
+      "provides": ["response-formatter-middleware", "envelope-builder", "pagination-helper"],
+      "dependencies": ["error-handling"],
+      "files": [
+        { "path": "src/middleware/response-formatter.js", "type": "source" },
+        { "path": "src/middleware/pagination.js", "type": "source" },
+        { "path": "tests/middleware/response-formatter.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "request-logger",
+      "name": "Request Logger",
+      "category": "middleware",
+      "domain": ["api"],
+      "tags": ["logging", "http", "access-log", "request-id"],
+      "description": "HTTP request/response logging middleware with request ID generation, duration tracking, and configurable log level mapping by status code.",
+      "archetype_compatibility": ["microservice", "monolith"],
+      "provides": ["request-logger-middleware", "request-id-generator"],
+      "dependencies": ["logging"],
+      "files": [
+        { "path": "src/middleware/request-logger.js", "type": "source" },
+        { "path": "tests/middleware/request-logger.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "database-adapter",
+      "name": "Database Adapter",
+      "category": "integration",
+      "domain": ["api", "data"],
+      "tags": ["database", "sql", "nosql", "adapter", "persistence"],
+      "description": "Unified database adapter interface supporting SQL and NoSQL backends with connection pooling, migrations, transaction management, and health checks.",
+      "archetype_compatibility": ["microservice", "monolith", "modular"],
+      "provides": ["db-adapter", "connection-pool", "migration-runner", "transaction-manager"],
+      "dependencies": ["config-system", "logging", "error-handling"],
+      "files": [
+        { "path": "src/database/adapter.js", "type": "source" },
+        { "path": "src/database/connection-pool.js", "type": "source" },
+        { "path": "src/database/migrations.js", "type": "source" },
+        { "path": "tests/database/adapter.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "cache-layer",
+      "name": "Cache Layer",
+      "category": "integration",
+      "domain": ["api", "data"],
+      "tags": ["cache", "redis", "memory", "ttl", "performance"],
+      "description": "Multi-tier caching layer with in-memory LRU and external store adapters, TTL management, cache invalidation patterns, and stampede protection.",
+      "archetype_compatibility": ["microservice", "monolith", "modular"],
+      "provides": ["cache-manager", "memory-store", "cache-adapter-interface"],
+      "dependencies": ["config-system", "logging"],
+      "files": [
+        { "path": "src/cache/cache-manager.js", "type": "source" },
+        { "path": "src/cache/memory-store.js", "type": "source" },
+        { "path": "src/cache/cache-adapter.js", "type": "source" },
+        { "path": "tests/cache/cache-manager.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "queue-system",
+      "name": "Queue System",
+      "category": "integration",
+      "domain": ["api", "automation", "data"],
+      "tags": ["queue", "jobs", "async", "background", "worker"],
+      "description": "In-process job queue with priority scheduling, retry policies, dead-letter handling, concurrency control, and pluggable backend adapters.",
+      "archetype_compatibility": ["microservice", "event-driven", "pipeline"],
+      "provides": ["job-queue", "worker-pool", "job-scheduler"],
+      "dependencies": ["config-system", "logging", "error-handling", "event-bus"],
+      "files": [
+        { "path": "src/queue/job-queue.js", "type": "source" },
+        { "path": "src/queue/worker-pool.js", "type": "source" },
+        { "path": "src/queue/scheduler.js", "type": "source" },
+        { "path": "tests/queue/job-queue.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "http-client",
+      "name": "HTTP Client",
+      "category": "integration",
+      "domain": ["api", "automation", "ai-agent"],
+      "tags": ["http", "fetch", "rest", "retry", "circuit-breaker"],
+      "description": "Resilient HTTP client wrapper with automatic retries, circuit breaker, request/response interceptors, timeout management, and structured error handling.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["http-client", "interceptors", "circuit-breaker"],
+      "dependencies": ["config-system", "logging", "error-handling"],
+      "files": [
+        { "path": "src/http/http-client.js", "type": "source" },
+        { "path": "src/http/interceptors.js", "type": "source" },
+        { "path": "src/http/circuit-breaker.js", "type": "source" },
+        { "path": "tests/http/http-client.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "file-storage",
+      "name": "File Storage",
+      "category": "integration",
+      "domain": ["api", "data", "automation"],
+      "tags": ["file", "storage", "upload", "stream", "fs"],
+      "description": "Abstracted file storage layer with local filesystem and cloud-compatible adapters, streaming support, path sanitization, and metadata tracking.",
+      "archetype_compatibility": ["microservice", "monolith", "modular"],
+      "provides": ["storage-adapter", "file-manager", "stream-handler"],
+      "dependencies": ["config-system", "logging", "error-handling", "path-utils"],
+      "files": [
+        { "path": "src/storage/storage-adapter.js", "type": "source" },
+        { "path": "src/storage/file-manager.js", "type": "source" },
+        { "path": "tests/storage/storage-adapter.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "websocket-handler",
+      "name": "WebSocket Handler",
+      "category": "integration",
+      "domain": ["api", "ui"],
+      "tags": ["websocket", "realtime", "pub-sub", "channels"],
+      "description": "WebSocket connection manager with channel-based pub/sub, heartbeat monitoring, automatic reconnection, and message serialization.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven"],
+      "provides": ["ws-server", "ws-client", "channel-manager"],
+      "dependencies": ["config-system", "logging", "error-handling", "event-bus"],
+      "files": [
+        { "path": "src/ws/ws-handler.js", "type": "source" },
+        { "path": "src/ws/channel-manager.js", "type": "source" },
+        { "path": "tests/ws/ws-handler.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "unit-test-setup",
+      "name": "Unit Test Setup",
+      "category": "testing",
+      "domain": ["*"],
+      "tags": ["test", "unit", "vitest", "jest", "mocha"],
+      "description": "Complete unit testing scaffold with test runner configuration, assertion helpers, setup/teardown utilities, and test organization conventions.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["test-config", "test-helpers", "test-conventions"],
+      "dependencies": [],
+      "files": [
+        { "path": "vitest.config.js", "type": "config" },
+        { "path": "tests/setup.js", "type": "source" },
+        { "path": "tests/helpers/index.js", "type": "source" }
+      ]
+    },
+    {
+      "id": "integration-test-setup",
+      "name": "Integration Test Setup",
+      "category": "testing",
+      "domain": ["api", "data"],
+      "tags": ["test", "integration", "e2e", "supertest"],
+      "description": "Integration testing framework with server bootstrapping, database seeding, API testing utilities, and isolated test environments.",
+      "archetype_compatibility": ["microservice", "monolith", "modular"],
+      "provides": ["integration-test-config", "api-test-client", "db-seeder"],
+      "dependencies": ["unit-test-setup", "database-adapter"],
+      "files": [
+        { "path": "tests/integration/setup.js", "type": "source" },
+        { "path": "tests/integration/helpers.js", "type": "source" },
+        { "path": "tests/integration/api-client.js", "type": "source" }
+      ]
+    },
+    {
+      "id": "mock-factory",
+      "name": "Mock Factory",
+      "category": "testing",
+      "domain": ["*"],
+      "tags": ["mock", "stub", "spy", "test-double", "fake"],
+      "description": "Flexible mock/stub/spy factory with auto-mock generation, configurable return sequences, call tracking, and deep mock support.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["mock-factory", "spy-helpers", "auto-mocker"],
+      "dependencies": ["unit-test-setup"],
+      "files": [
+        { "path": "tests/mocks/mock-factory.js", "type": "source" },
+        { "path": "tests/mocks/auto-mocker.js", "type": "source" },
+        { "path": "tests/mocks/mock-factory.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "test-fixtures",
+      "name": "Test Fixtures",
+      "category": "testing",
+      "domain": ["*"],
+      "tags": ["fixtures", "seed", "factory", "test-data"],
+      "description": "Test data fixture system with factory-based generation, fixture composition, deterministic randomization, and snapshot management.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["fixture-factory", "fixture-loader", "snapshot-manager"],
+      "dependencies": ["unit-test-setup"],
+      "files": [
+        { "path": "tests/fixtures/factory.js", "type": "source" },
+        { "path": "tests/fixtures/loader.js", "type": "source" },
+        { "path": "tests/fixtures/data/sample.json", "type": "config" }
+      ]
+    },
+    {
+      "id": "coverage-config",
+      "name": "Coverage Config",
+      "category": "testing",
+      "domain": ["*"],
+      "tags": ["coverage", "istanbul", "c8", "lcov", "threshold"],
+      "description": "Code coverage configuration with threshold enforcement, report generation in multiple formats, and CI-compatible output for coverage gating.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["coverage-config", "coverage-thresholds", "coverage-reports"],
+      "dependencies": ["unit-test-setup"],
+      "files": [
+        { "path": ".c8rc.json", "type": "config" },
+        { "path": "scripts/check-coverage.js", "type": "source" }
+      ]
+    },
+    {
+      "id": "contract-test-setup",
+      "name": "Contract Test Setup",
+      "category": "testing",
+      "domain": ["api"],
+      "tags": ["contract", "pact", "consumer-driven", "api-testing"],
+      "description": "Consumer-driven contract testing scaffold with provider verification, contract publishing, and breaking change detection.",
+      "archetype_compatibility": ["microservice", "event-driven"],
+      "provides": ["contract-test-config", "pact-helpers", "provider-verifier"],
+      "dependencies": ["unit-test-setup", "http-client"],
+      "files": [
+        { "path": "tests/contracts/setup.js", "type": "source" },
+        { "path": "tests/contracts/helpers.js", "type": "source" },
+        { "path": "tests/contracts/pact-config.js", "type": "config" }
+      ]
+    },
+    {
+      "id": "dockerfile",
+      "name": "Dockerfile",
+      "category": "deployment",
+      "domain": ["api", "cli", "automation"],
+      "tags": ["docker", "container", "image", "multi-stage"],
+      "description": "Production-optimized multi-stage Dockerfile with layer caching, security hardening, non-root user, health check, and minimal final image.",
+      "archetype_compatibility": ["microservice", "monolith", "pipeline"],
+      "provides": ["dockerfile", "dockerignore"],
+      "dependencies": [],
+      "files": [
+        { "path": "Dockerfile", "type": "config" },
+        { "path": ".dockerignore", "type": "config" }
+      ]
+    },
+    {
+      "id": "docker-compose",
+      "name": "Docker Compose",
+      "category": "deployment",
+      "domain": ["api", "data", "automation"],
+      "tags": ["docker-compose", "orchestration", "local-dev", "services"],
+      "description": "Docker Compose configuration for local development with service dependencies, volume mounts, health checks, and environment management.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven"],
+      "provides": ["docker-compose-config", "dev-services"],
+      "dependencies": ["dockerfile", "env-management"],
+      "files": [
+        { "path": "docker-compose.yml", "type": "config" },
+        { "path": "docker-compose.dev.yml", "type": "config" }
+      ]
+    },
+    {
+      "id": "github-actions-ci",
+      "name": "GitHub Actions CI",
+      "category": "deployment",
+      "domain": ["*"],
+      "tags": ["ci", "github-actions", "automation", "pipeline"],
+      "description": "GitHub Actions CI workflow with matrix testing, caching, lint checks, test execution, coverage reporting, and artifact uploads.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["ci-workflow", "ci-scripts"],
+      "dependencies": ["unit-test-setup", "coverage-config"],
+      "files": [
+        { "path": ".github/workflows/ci.yml", "type": "config" },
+        { "path": "scripts/ci-setup.sh", "type": "source" }
+      ]
+    },
+    {
+      "id": "github-actions-cd",
+      "name": "GitHub Actions CD",
+      "category": "deployment",
+      "domain": ["*"],
+      "tags": ["cd", "deploy", "github-actions", "release"],
+      "description": "GitHub Actions CD workflow with environment-based deployment, rollback support, semantic versioning, and deployment notifications.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["cd-workflow", "deploy-scripts", "release-config"],
+      "dependencies": ["github-actions-ci", "env-management"],
+      "files": [
+        { "path": ".github/workflows/cd.yml", "type": "config" },
+        { "path": ".github/workflows/release.yml", "type": "config" },
+        { "path": "scripts/deploy.sh", "type": "source" }
+      ]
+    },
+    {
+      "id": "env-management",
+      "name": "Environment Management",
+      "category": "deployment",
+      "domain": ["*"],
+      "tags": ["env", "environment", "dotenv", "secrets"],
+      "description": "Environment variable management with .env file templates, validation, secret masking, and per-environment configuration overrides.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["env-template", "env-validator", "env-loader"],
+      "dependencies": ["config-system"],
+      "files": [
+        { "path": ".env.example", "type": "config" },
+        { "path": "src/env/env-validator.js", "type": "source" },
+        { "path": "src/env/env-loader.js", "type": "source" }
+      ]
+    },
+    {
+      "id": "k8s-manifests",
+      "name": "Kubernetes Manifests",
+      "category": "deployment",
+      "domain": ["api", "automation"],
+      "tags": ["kubernetes", "k8s", "helm", "orchestration"],
+      "description": "Kubernetes deployment manifests with service, ingress, configmap, secrets, horizontal pod autoscaler, and resource limit definitions.",
+      "archetype_compatibility": ["microservice", "event-driven"],
+      "provides": ["k8s-deployment", "k8s-service", "k8s-ingress", "k8s-hpa"],
+      "dependencies": ["dockerfile", "env-management"],
+      "files": [
+        { "path": "k8s/deployment.yml", "type": "config" },
+        { "path": "k8s/service.yml", "type": "config" },
+        { "path": "k8s/ingress.yml", "type": "config" },
+        { "path": "k8s/hpa.yml", "type": "config" }
+      ]
+    },
+    {
+      "id": "cli-parser",
+      "name": "CLI Parser",
+      "category": "utility",
+      "domain": ["cli"],
+      "tags": ["cli", "argument-parser", "flags", "commands"],
+      "description": "Zero-dependency CLI argument parser with subcommand support, flag parsing, type coercion, help generation, and tab completion scaffolding.",
+      "archetype_compatibility": ["monolith", "pipeline", "modular"],
+      "provides": ["cli-parser", "command-registry", "help-generator"],
+      "dependencies": ["error-handling", "string-utils"],
+      "files": [
+        { "path": "src/cli/parser.js", "type": "source" },
+        { "path": "src/cli/commands.js", "type": "source" },
+        { "path": "src/cli/help.js", "type": "source" },
+        { "path": "tests/cli/parser.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "string-utils",
+      "name": "String Utilities",
+      "category": "utility",
+      "domain": ["*"],
+      "tags": ["string", "text", "template", "format", "slugify"],
+      "description": "String manipulation utilities including case conversion, template interpolation, slugification, truncation, pluralization, and diff helpers.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["string-helpers", "template-engine", "case-converter"],
+      "dependencies": [],
+      "files": [
+        { "path": "src/utils/string-utils.js", "type": "source" },
+        { "path": "tests/utils/string-utils.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "date-utils",
+      "name": "Date Utilities",
+      "category": "utility",
+      "domain": ["*"],
+      "tags": ["date", "time", "format", "duration", "timezone"],
+      "description": "Lightweight date/time utilities for formatting, relative time, duration calculation, ISO parsing, and timezone-aware operations without external deps.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["date-helpers", "duration-helpers", "formatters"],
+      "dependencies": [],
+      "files": [
+        { "path": "src/utils/date-utils.js", "type": "source" },
+        { "path": "tests/utils/date-utils.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "crypto-utils",
+      "name": "Crypto Utilities",
+      "category": "utility",
+      "domain": ["api", "cli"],
+      "tags": ["crypto", "hash", "hmac", "random", "uuid"],
+      "description": "Cryptographic utility functions wrapping Node.js crypto module for hashing, HMAC generation, secure random values, UUID v4, and constant-time comparison.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["hash-helpers", "random-helpers", "uuid-generator"],
+      "dependencies": [],
+      "files": [
+        { "path": "src/utils/crypto-utils.js", "type": "source" },
+        { "path": "tests/utils/crypto-utils.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "path-utils",
+      "name": "Path Utilities",
+      "category": "utility",
+      "domain": ["*"],
+      "tags": ["path", "filesystem", "resolve", "normalize", "glob"],
+      "description": "Path manipulation utilities with cross-platform normalization, safe path joining, extension helpers, glob matching, and project root resolution.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["path-helpers", "glob-matcher", "root-resolver"],
+      "dependencies": [],
+      "files": [
+        { "path": "src/utils/path-utils.js", "type": "source" },
+        { "path": "tests/utils/path-utils.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "validation-utils",
+      "name": "Validation Utilities",
+      "category": "utility",
+      "domain": ["*"],
+      "tags": ["validation", "assert", "check", "schema", "guard"],
+      "description": "Runtime validation utilities with type guards, assertion helpers, schema-based validation, and composable validation pipelines.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["type-guards", "assertion-helpers", "validation-pipeline"],
+      "dependencies": ["error-handling"],
+      "files": [
+        { "path": "src/utils/validation-utils.js", "type": "source" },
+        { "path": "tests/utils/validation-utils.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "claude-md-template",
+      "name": "CLAUDE.md Template",
+      "category": "utility",
+      "domain": ["ai-agent", "automation"],
+      "tags": ["claude", "claude-code", "ai", "instructions", "prompt"],
+      "description": "CLAUDE.md template generator that produces project-aware instruction files with coding conventions, architecture context, and workflow guidance for Claude Code.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["claude-md-generator", "convention-templates", "context-builder"],
+      "dependencies": ["string-utils"],
+      "files": [
+        { "path": "src/claude/claude-md-generator.js", "type": "source" },
+        { "path": "templates/CLAUDE.md.hbs", "type": "config" },
+        { "path": "tests/claude/claude-md-generator.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "slash-command-scaffold",
+      "name": "Slash Command Scaffold",
+      "category": "utility",
+      "domain": ["ai-agent", "cli"],
+      "tags": ["slash-command", "claude-code", "scaffold", "developer-tools"],
+      "description": "Scaffold generator for Claude Code slash commands with command definition, argument parsing, markdown output formatting, and registration helpers.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["slash-command-generator", "command-templates", "registration-helper"],
+      "dependencies": ["string-utils", "path-utils"],
+      "files": [
+        { "path": "src/claude/slash-command-generator.js", "type": "source" },
+        { "path": "templates/slash-command.hbs", "type": "config" },
+        { "path": "tests/claude/slash-command-generator.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "mcp-server-config",
+      "name": "MCP Server Config",
+      "category": "utility",
+      "domain": ["ai-agent", "automation"],
+      "tags": ["mcp", "model-context-protocol", "server", "tools"],
+      "description": "MCP server configuration generator with tool definitions, resource templates, prompt scaffolds, and server registration for Claude Code integration.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["mcp-config-generator", "tool-definitions", "resource-templates"],
+      "dependencies": ["config-system", "path-utils"],
+      "files": [
+        { "path": "src/claude/mcp-config-generator.js", "type": "source" },
+        { "path": "templates/mcp-server.hbs", "type": "config" },
+        { "path": ".mcp.json", "type": "config" },
+        { "path": "tests/claude/mcp-config-generator.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "claude-hooks",
+      "name": "Claude Code Hooks",
+      "category": "utility",
+      "domain": ["ai-agent", "automation"],
+      "tags": ["hooks", "claude-code", "lifecycle", "automation"],
+      "description": "Claude Code hook system generator with pre/post command hooks, file watch triggers, build integration, and custom event handlers for development workflow automation.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["hooks-config", "hook-scripts", "hook-registry"],
+      "dependencies": ["config-system", "event-bus"],
+      "files": [
+        { "path": "src/claude/hooks-generator.js", "type": "source" },
+        { "path": "templates/hooks-config.hbs", "type": "config" },
+        { "path": ".claude/settings.json", "type": "config" },
+        { "path": "tests/claude/hooks-generator.test.js", "type": "test" }
+      ]
+    },
+    {
+      "id": "claude-memory",
+      "name": "Claude Memory System",
+      "category": "utility",
+      "domain": ["ai-agent", "automation"],
+      "tags": ["memory", "context", "persistence", "claude-code", "knowledge"],
+      "description": "Persistent memory and context system for Claude Code sessions with decision logging, project knowledge accumulation, and cross-session context retrieval.",
+      "archetype_compatibility": ["microservice", "monolith", "event-driven", "pipeline", "modular"],
+      "provides": ["memory-store", "decision-logger", "context-retriever"],
+      "dependencies": ["config-system", "path-utils", "date-utils"],
+      "files": [
+        { "path": "src/claude/memory-store.js", "type": "source" },
+        { "path": "src/claude/decision-logger.js", "type": "source" },
+        { "path": "src/claude/context-retriever.js", "type": "source" },
+        { "path": "tests/claude/memory-store.test.js", "type": "test" }
+      ]
+    }
+  ]
+}
