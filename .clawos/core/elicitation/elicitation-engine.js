@@ -183,6 +183,9 @@ export class ElicitationEngine {
     /** @type {boolean} */
     this._skipRecommended = options.skipRecommended ?? false;
 
+    /** @type {boolean} */
+    this._autonomous = options.autonomous ?? false;
+
     /** @type {EngineState} */
     this._state = 'idle';
 
@@ -265,10 +268,16 @@ export class ElicitationEngine {
         commands: [],
         mcpServers: [],
       },
+      executionMode: 'guided',
+      teamReplacement: {
+        enabled: false,
+        agents: [],
+        workflows: [],
+      },
       domainSpecific: {},
       meta: {
         createdAt: new Date().toISOString(),
-        engineVersion: '1.0.0',
+        engineVersion: '2.0.0',
         completionRatio: 0,
       },
     };
@@ -500,6 +509,44 @@ export class ElicitationEngine {
 
     this._finalise();
     return this.getProfile();
+  }
+
+  /**
+   * Starts an autonomous elicitation session. Applies all smart defaults
+   * immediately, then applies any explicit overrides. Returns the complete
+   * profile without asking any questions.
+   *
+   * @param {string} domain - Domain name or natural-language description.
+   * @param {Object} [overrides={}] - Explicit values to override defaults.
+   * @returns {RequirementsProfile} The completed profile.
+   */
+  startAutonomous(domain, overrides = {}) {
+    this._autonomous = true;
+    this.startElicitation(domain);
+    this.applyAllDefaults();
+
+    // Apply explicit overrides
+    this._profile.executionMode = 'autonomous';
+    for (const [key, value] of Object.entries(overrides)) {
+      if (key in this._profile) {
+        this._profile[key] = value;
+      }
+    }
+
+    return this.getProfile();
+  }
+
+  /**
+   * Injects team replacement configuration into the profile.
+   *
+   * @param {Object} teamConfig
+   * @param {string[]} [teamConfig.agents] - Agent role names.
+   * @param {string[]} [teamConfig.workflows] - Workflow names.
+   */
+  injectTeamConfig({ agents, workflows } = {}) {
+    this._profile.teamReplacement.enabled = true;
+    this._profile.teamReplacement.agents = agents || [];
+    this._profile.teamReplacement.workflows = workflows || [];
   }
 
   /**
@@ -828,10 +875,26 @@ export class ElicitationEngine {
  * @param {Object}  [options]          - Engine options.
  * @param {boolean} [options.skipOptional=false]
  * @param {boolean} [options.skipRecommended=false]
+ * @param {boolean} [options.autonomous=false] - If true, applies all defaults immediately.
+ * @param {Object}  [options.overrides={}]     - Profile overrides for autonomous mode.
+ * @param {Object}  [options.teamConfig]       - Team replacement config { agents, workflows }.
  * @returns {ElicitationEngine}
  */
 export function createElicitation(domain, options = {}) {
-  const engine = new ElicitationEngine(options);
-  engine.startElicitation(domain);
+  const { autonomous, overrides, teamConfig, ...engineOpts } = options;
+  const engine = new ElicitationEngine(engineOpts);
+
+  if (autonomous) {
+    engine.startAutonomous(domain, overrides || {});
+    if (teamConfig) {
+      engine.injectTeamConfig(teamConfig);
+    }
+  } else {
+    engine.startElicitation(domain);
+    if (teamConfig) {
+      engine.injectTeamConfig(teamConfig);
+    }
+  }
+
   return engine;
 }

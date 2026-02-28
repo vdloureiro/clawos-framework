@@ -1199,6 +1199,199 @@ Provide:
     ],
   ],
 
+  'team-replacement': (name, domain, blueprint) => [
+    [
+      'agent',
+      `# ${name}:agent — Create a New Agent
+
+You are an assistant working within the **${name}** framework, a **team-replacement** project.
+
+## Your Task
+
+Create a new autonomous agent with a defined persona, capabilities, and task handling logic.
+
+### Information to Gather
+
+If not provided, ask for:
+1. **Agent role** (e.g., "code-reviewer", "qa-tester", "technical-writer")
+2. **Persona** — The agent's personality, expertise, and communication style
+3. **Capabilities** — Specific tasks the agent can perform
+4. **Input/Output** — What the agent receives and what it produces
+
+### Implementation Steps
+
+1. **Create the agent file:**
+   - File: \`src/agents/<role>.agent.js\`
+   - Define persona, capabilities array, and execute method.
+   - Extend the base Agent class from the core module.
+
+2. **Implement the execute method:**
+   - Accept a structured task object with type, context, and parameters.
+   - Use the agent's persona to guide decision-making style.
+   - Return structured results with status, output, and reasoning log.
+   - Include error handling and graceful degradation.
+
+3. **Register the agent:**
+   - Add to the agent registry in \`src/agents/index.js\`.
+   - Register capabilities with the orchestrator for task routing.
+
+4. **Write tests:**
+   - Test capability matching, task execution, error handling, and output format.
+
+### Coding Standards
+
+- Agents must be stateless between tasks — all state goes through the task context.
+- Log all decisions and actions for auditability.
+- Capabilities must be specific and non-overlapping with other agents.
+- Include a \`getStatus()\` method returning agent health and task history.
+
+### Output
+
+Provide:
+1. The complete agent file with persona and capabilities.
+2. Registration code.
+3. Usage example showing the agent handling a sample task.
+4. Test file.
+`,
+    ],
+    [
+      'workflow',
+      `# ${name}:workflow — Create or Run a Workflow
+
+You are an assistant working within the **${name}** framework, a **team-replacement** project.
+
+## Your Task
+
+Create a new multi-phase workflow that coordinates agents to complete a complex task.
+
+### Information to Gather
+
+If not provided, ask for:
+1. **Workflow name** (e.g., "code-review-pipeline", "release-process", "bug-triage")
+2. **Phases** — Ordered steps the workflow executes
+3. **Agent assignments** — Which agent handles each phase
+4. **Handoff data** — What data passes between phases
+
+### Implementation Steps
+
+1. **Create the workflow file:**
+   - File: \`src/workflows/<name>.workflow.js\`
+   - Define phases as an ordered array with agent assignments.
+   - Each phase specifies: name, assigned agent, input schema, output schema.
+
+2. **Implement phase orchestration:**
+   - Execute phases sequentially, passing outputs as inputs to the next.
+   - Support pause/resume for human-in-the-loop checkpoints.
+   - Track progress with phase completion status.
+
+3. **Configure error handling:**
+   - Define retry policy per phase.
+   - Support phase-level fallback strategies.
+   - Log failures with full context for debugging.
+
+4. **Register the workflow:**
+   - Add to the workflow registry.
+   - Update barrel export in \`src/workflows/index.js\`.
+
+5. **Write tests:**
+   - Test happy path, phase failures, retry behavior, and pause/resume.
+
+### Coding Standards
+
+- Workflows must be resumable — persist state between phases.
+- Phase transitions must validate output schema before proceeding.
+- Use structured logging with workflow ID for traceability.
+- Never hardcode agent names — use capability-based routing.
+
+### Output
+
+Provide:
+1. The complete workflow file.
+2. Phase configuration with agent assignments.
+3. Usage example running the workflow end-to-end.
+4. Test file.
+`,
+    ],
+    [
+      'dispatch',
+      `# ${name}:dispatch — Dispatch a Task to an Agent
+
+You are an assistant working within the **${name}** framework, a **team-replacement** project.
+
+## Your Task
+
+Dispatch a task to the most appropriate agent based on the task type and agent capabilities.
+
+### How It Works
+
+1. **Describe the task** — What needs to be done.
+2. **The orchestrator** analyzes the task and matches it to the best agent based on capabilities.
+3. **The agent executes** the task and returns structured results.
+4. **Results are presented** with the agent's reasoning and output.
+
+### Steps
+
+1. Read the orchestrator at \`src/orchestrator.js\` to understand routing logic.
+2. Read the agent registry at \`src/agents/index.js\` to see available agents.
+3. Match the task to the best agent.
+4. Execute the task through the agent's execute method.
+5. Present the results.
+
+### Output
+
+Show:
+1. Which agent was selected and why.
+2. The agent's execution log.
+3. The final output.
+4. Suggestions for follow-up tasks.
+`,
+    ],
+    [
+      'team-status',
+      `# ${name}:team-status — Team Status Dashboard
+
+You are an assistant working within the **${name}** framework, a **team-replacement** project.
+
+## Your Task
+
+Display the current status of all agents, active workflows, and recent task history.
+
+### Information to Gather
+
+Read the following:
+1. \`src/agents/\` — List all registered agents, their personas, and capabilities.
+2. \`src/workflows/\` — List all defined workflows and their phases.
+3. \`src/orchestrator.js\` — Understand the dispatch configuration.
+
+### Output Format
+
+Present a team dashboard:
+
+\`\`\`
+=== Team Status ===
+
+AGENTS:
+  [READY] code-reviewer — Senior code reviewer (capabilities: 4)
+  [READY] qa-tester     — QA specialist (capabilities: 4)
+  [READY] tech-writer   — Technical writer (capabilities: 3)
+
+WORKFLOWS:
+  development-pipeline — 4 phases (plan → implement → review → test)
+  release-process      — 3 phases (build → stage → release)
+
+ORCHESTRATOR: Active — routing by capability match
+
+RECENT TASKS: (read from logs if available)
+\`\`\`
+
+### Important
+
+- This is a read-only command. Do NOT modify any files.
+- If files are missing, report what was expected vs what was found.
+`,
+    ],
+  ],
+
   plugin: (name, domain, _blueprint) => [
     [
       'extension',

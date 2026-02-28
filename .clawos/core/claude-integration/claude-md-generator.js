@@ -183,6 +183,25 @@ const ARCHITECTURE_DIAGRAMS = {
 │                  Testing                         │
 │        (Unit, integration, e2e)                  │
 └─────────────────────────────────────────────────┘`,
+
+  team: `
+┌─────────────────────────────────────────────────┐
+│               Orchestrator                       │
+│      (Task dispatch, coordination)               │
+├──────────────────┬──────────────────────────────┤
+│     Agents       │        Workflows             │
+│  ┌───────────┐   │   ┌─────────────────┐        │
+│  │ Agent A   │   │   │ Phase 1 → 2 → 3 │        │
+│  │ Agent B   │   │   │ Phase 1 → 2     │        │
+│  │ Agent C   │   │   └─────────────────┘        │
+│  └───────────┘   │                              │
+├──────────────────┴──────────────────────────────┤
+│                   Core                           │
+│         (Shared logic, utils, config)            │
+├─────────────────────────────────────────────────┤
+│                  Testing                         │
+│     (Agent tests, workflow tests, e2e)           │
+└─────────────────────────────────────────────────┘`,
 };
 
 /**
@@ -250,6 +269,16 @@ const DOMAIN_RULES = {
     'All adapters must implement the same interface and be swappable at runtime.',
     'Testing must cover core logic, each adapter, and plugin integration points.',
   ],
+  team: [
+    'Each agent must have a clear persona and well-defined capabilities — never overlap responsibilities.',
+    'Workflows must be composable: any workflow phase should be reusable across workflows.',
+    'The orchestrator must route tasks to the correct agent based on task type and agent capabilities.',
+    'Agent outputs must be structured and validated before passing to the next workflow phase.',
+    'All agent decisions must be logged for auditability and debugging.',
+    'Workflows must support pause/resume for human-in-the-loop checkpoints.',
+    'Never hardcode agent assignments — use capability matching for flexible routing.',
+    'Test each agent independently AND as part of end-to-end workflow runs.',
+  ],
 };
 
 /**
@@ -300,6 +329,14 @@ const DOMAIN_DOC_INSTRUCTIONS = {
 - Document the plugin API with lifecycle hooks and available extension points.
 - Maintain adapter compatibility matrix.
 - Document configuration schema with defaults and validation rules.`,
+
+  team: `### Team Architecture Documentation Rules
+- Document each agent's persona, capabilities, and expected inputs/outputs.
+- Maintain a workflow diagram showing phases, agent assignments, and data flow.
+- Document the orchestrator's routing logic and task dispatch rules.
+- Each agent must have a "capabilities card" in docs/ listing what it can and cannot do.
+- Document inter-agent communication protocols and data contracts.
+- Maintain a decision log format for tracking agent reasoning and actions.`,
 };
 
 // ---------------------------------------------------------------------------
@@ -637,6 +674,23 @@ class ClaudeMdGenerator {
     };
 
     const commands = domainCommands[domain] || [];
+
+    // Also add team-replacement commands if blueprint has agents/workflows
+    if (blueprint.modules) {
+      const hasAgents = blueprint.modules.some((m) => m.name === 'agents');
+      const hasWorkflows = blueprint.modules.some((m) => m.name === 'workflows');
+      if (hasAgents) {
+        commands.push([`/${name}:agent`, 'Create a new agent with persona and capabilities']);
+        commands.push([`/${name}:dispatch`, 'Dispatch a task to the appropriate agent']);
+      }
+      if (hasWorkflows) {
+        commands.push([`/${name}:workflow`, 'Create or run a workflow']);
+      }
+      if (hasAgents && hasWorkflows) {
+        commands.push([`/${name}:team-status`, 'Show status of all agents and active workflows']);
+      }
+    }
+
     for (const [cmd, desc] of commands) {
       lines.push(`| \`${cmd}\` | ${desc} |`);
     }

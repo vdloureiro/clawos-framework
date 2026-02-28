@@ -21,7 +21,7 @@
 // ---------------------------------------------------------------------------
 
 /**
- * @typedef {'api' | 'cli' | 'testing' | 'ui' | 'data' | 'ai-agent' | 'automation' | 'plugin'} DomainName
+ * @typedef {'api' | 'cli' | 'testing' | 'ui' | 'data' | 'ai-agent' | 'automation' | 'plugin' | 'custom'} DomainName
  */
 
 /**
@@ -61,6 +61,7 @@ const DOMAINS = [
   'ai-agent',
   'automation',
   'plugin',
+  'custom',
 ];
 
 // ---------------------------------------------------------------------------
@@ -143,6 +144,7 @@ const KEYWORD_MAP = {
     'capabilities', 'permission', 'permissions', 'vscode', 'webpack',
     'babel', 'eslint', 'rollup',
   ],
+  custom: [],
 };
 
 // ---------------------------------------------------------------------------
@@ -245,6 +247,7 @@ const PHRASE_PATTERNS = {
     /\bplugin\s*lifecycle/,
     /\bplugin\s*(registry|marketplace|sdk)\b/,
   ],
+  custom: [],
 };
 
 // ---------------------------------------------------------------------------
@@ -500,17 +503,149 @@ export function detectDomain(userInput) {
 
   const primary = sorted[0].confidence >= MIN_CONFIDENCE_THRESHOLD
     ? sorted[0]
-    : { domain: /** @type {DomainName} */ ('api'), confidence: 0 };
+    : { domain: /** @type {DomainName} */ ('custom'), confidence: 0 };
 
   const secondary = sorted
     .slice(1)
-    .filter((s) => s.confidence >= SECONDARY_THRESHOLD);
+    .filter((s) => s.confidence >= SECONDARY_THRESHOLD && s.domain !== 'custom');
+
+  const isGeneric = primary.confidence < 0.6;
+  const isMultiDomain = sorted.filter(s => s.confidence >= 0.25 && s.domain !== 'custom').length >= 2;
+  const teamReplacement = detectTeamReplacement(userInput);
+  const scope = detectScope(userInput);
 
   return {
     primary,
     secondary,
     keywords: matchedKeywords,
+    isGeneric,
+    isMultiDomain,
+    teamReplacement,
+    scope,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Team Replacement Detection
+// ---------------------------------------------------------------------------
+
+/** @type {RegExp[]} */
+const TEAM_PATTERNS = [
+  /\b(replace|substituir|automat[ei])\s*(a\s*)?(team|equipe|squad|time)\b/i,
+  /\b(team|equipe|squad)\s*(replacement|substitution|automation)\b/i,
+  /\bmanage\s*(my\s*)?(dev|development|qa|testing|design|marketing|sales|ops|support)\s*(team|workflow|process)\b/i,
+  /\bmulti[\s-]*agent\b/i,
+  /\bagent[\s-]*based\b/i,
+  /\borchestrat[ei]\s*(agents|team|roles|workflow)\b/i,
+  /\b(dev|qa|pm|architect|designer|analyst|devops)\s*(agent|role|workflow)\b/i,
+  /\bcoordinate\s*(agents|team|roles)\b/i,
+  /\b(roles|personas|agents)\s*(and\s*)?(workflows|pipelines|tasks)\b/i,
+];
+
+/** @type {Record<string, { agents: string[], workflows: string[] }>} */
+const TEAM_PRESETS = {
+  development: {
+    agents: ['project-manager', 'architect', 'developer', 'qa-engineer', 'devops'],
+    workflows: ['planning', 'development', 'code-review', 'testing', 'deployment'],
+  },
+  qa: {
+    agents: ['qa-lead', 'test-engineer', 'automation-engineer'],
+    workflows: ['test-planning', 'test-execution', 'bug-triage', 'regression'],
+  },
+  marketing: {
+    agents: ['content-strategist', 'copywriter', 'seo-specialist', 'analyst'],
+    workflows: ['content-planning', 'content-creation', 'review', 'publishing', 'analytics'],
+  },
+  support: {
+    agents: ['support-lead', 'support-agent', 'escalation-manager', 'knowledge-manager'],
+    workflows: ['ticket-triage', 'resolution', 'escalation', 'knowledge-update'],
+  },
+  design: {
+    agents: ['ux-researcher', 'ui-designer', 'design-reviewer'],
+    workflows: ['research', 'wireframing', 'prototyping', 'design-review', 'handoff'],
+  },
+  generic: {
+    agents: ['coordinator', 'specialist', 'reviewer', 'reporter'],
+    workflows: ['planning', 'execution', 'review', 'delivery'],
+  },
+};
+
+/**
+ * Detects whether the user input describes a team-replacement scenario.
+ *
+ * @param {string} userInput
+ * @returns {{ isTeamReplacement: boolean, suggestedAgents: string[], suggestedWorkflows: string[] }}
+ */
+export function detectTeamReplacement(userInput) {
+  const text = userInput.toLowerCase();
+  const isTeamReplacement = TEAM_PATTERNS.some(p => p.test(text));
+
+  if (!isTeamReplacement) {
+    return { isTeamReplacement: false, suggestedAgents: [], suggestedWorkflows: [] };
+  }
+
+  // Detect which team preset matches best
+  let bestPreset = 'generic';
+  for (const key of Object.keys(TEAM_PRESETS)) {
+    if (key !== 'generic' && text.includes(key)) {
+      bestPreset = key;
+      break;
+    }
+  }
+
+  // Also check shorthand keywords
+  if (text.match(/\b(dev|development|software|coding|programming)\b/)) bestPreset = 'development';
+  else if (text.match(/\b(qa|test|quality)\b/)) bestPreset = 'qa';
+  else if (text.match(/\b(marketing|content|seo)\b/)) bestPreset = 'marketing';
+  else if (text.match(/\b(support|helpdesk|customer\s*service)\b/)) bestPreset = 'support';
+  else if (text.match(/\b(design|ux|ui\s*design)\b/)) bestPreset = 'design';
+
+  const preset = TEAM_PRESETS[bestPreset];
+  return {
+    isTeamReplacement: true,
+    suggestedAgents: preset.agents,
+    suggestedWorkflows: preset.workflows,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Scope Detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Detects the likely scope/size of the requested framework.
+ *
+ * @param {string} userInput
+ * @returns {'small' | 'medium' | 'large'}
+ */
+export function detectScope(userInput) {
+  const text = userInput.toLowerCase();
+
+  const largeIndicators = [
+    /\b(enterprise|large[\s-]*scale|production|distributed|micro[\s-]*service)/,
+    /\b(multi[\s-]*agent|multi[\s-]*team|full[\s-]*stack|end[\s-]*to[\s-]*end)/,
+    /\b(scalable|high[\s-]*availability|fault[\s-]*tolerant|mission[\s-]*critical)/,
+    /\b(platform|ecosystem|marketplace|saas)/,
+  ];
+
+  const smallIndicators = [
+    /\b(simple|small|tiny|minimal|lightweight|basic|quick|single)/,
+    /\b(utility|helper|tool|script|snippet|wrapper)/,
+    /\b(prototype|poc|proof[\s-]*of[\s-]*concept|experiment|demo)/,
+  ];
+
+  let score = 0; // negative = small, positive = large
+  for (const p of largeIndicators) { if (p.test(text)) score += 2; }
+  for (const p of smallIndicators) { if (p.test(text)) score -= 2; }
+
+  // Word count as a secondary signal — longer descriptions suggest larger scope
+  const wordCount = text.split(/\s+/).length;
+  if (wordCount > 40) score += 1;
+  if (wordCount < 10) score -= 1;
+
+  if (score >= 2) return 'large';
+  if (score <= -2) return 'small';
+  return 'medium';
 }
 
 /**

@@ -1,86 +1,62 @@
 # ClawOS:blueprint — Generate Architecture Blueprint Only
 
-You are ClawOS, an intelligent meta-framework builder. The user wants to generate **only the architecture blueprint** for a framework — without generating the actual code. This is useful for planning and reviewing before committing to full generation.
+You are **ClawOS**, an intelligent framework builder. The user wants to see the **architecture blueprint** before generating code. This is a planning-only command.
 
 ---
 
-## Step 1: Understand the Request
+## STEP 1: UNDERSTAND
 
-Read these files:
-1. `.clawos/core/elicitation/domain-detector.js`
-2. `.clawos/domains/index.js`
+Read: `.clawos/core/elicitation/domain-detector.js`, `.clawos/domains/index.js`
 
-Ask the user: **What framework are you planning?** Describe it in natural language.
+Ask: **What framework are you planning?** Just describe it naturally.
 
-Detect the domain and confirm with the user.
+Analyze the response — identify purpose, scope, relevant domains, and whether it involves team replacement (agents/workflows).
 
----
-
-## Step 2: Quick Elicitation
-
-Read:
-1. `.clawos/core/elicitation/question-bank.js`
-2. `.clawos/domains/{domain}-framework.js`
-
-Ask only the `required` priority questions to build a minimal RequirementsProfile. Focus on:
-- Framework name
-- Language (JS/TS/Python)
-- Architecture pattern preference
-- Key features (top 3-5)
-- Scale (small/medium/large)
+Summarize what you understood in 2-3 sentences.
 
 ---
 
-## Step 3: Generate Blueprint
+## STEP 2: DESIGN
 
-Read:
-1. `.clawos/core/blueprint/blueprint-engine.js`
-2. `.clawos/core/blueprint/blueprint-registry.js`
-3. `.clawos/archetypes/index.js`
-4. `.clawos/archetypes/{selected-archetype}.js`
-5. `.clawos/core/blueprint/blueprints/{domain}-blueprint.js` (if exists)
-6. `.clawos/core/blueprint/blueprints/universal-blueprint.js`
+Read: `.clawos/core/blueprint/blueprint-engine.js`, `.clawos/core/blueprint/blueprint-registry.js`, `.clawos/archetypes/index.js`, `.clawos/archetypes/{best-fit}.js`, `.clawos/core/blueprint/blueprints/universal-blueprint.js`
 
-Compose and present a complete blueprint including:
+Make smart decisions about:
+- Architecture archetype and why
+- Module list with responsibilities
+- Agent definitions (if team-replacement)
+- Workflow structure (if applicable)
+- Feature selection
 
-### 1. Architecture Overview
-- Selected archetype and why
-- Layer diagram (ASCII art)
-- Communication patterns between modules
+Present a complete blueprint:
+
+### 1. Architecture Summary
+- Archetype chosen and rationale
+- Layer diagram (ASCII)
+- Communication patterns
 
 ### 2. Directory Structure
-- Complete tree with explanations for each directory
-- File listing with purpose annotations
+- Full tree with explanations
 
 ### 3. Module Map
-- Each module: name, responsibility, dependencies, exports
-- Module dependency graph (ASCII or mermaid)
+- Each module: name, responsibility, dependencies
+- If agents: each agent with persona and capabilities
+- If workflows: each workflow with phases and tasks
 
-### 4. Component Selection
-Read `.clawos/core/registry/component-catalog.json` and list which components from the catalog will be used, organized by category.
+### 4. Components
+Read `.clawos/core/registry/component-catalog.json` and list which components will be used.
 
-### 5. Configuration Plan
-- List all config files that would be generated
-- Key configuration decisions
+### 5. Claude Code Integration
+- Slash commands that will be generated
+- CLAUDE.md structure
 
-### 6. Claude Code Integration Plan
-- What slash commands would be generated
-- What CLAUDE.md sections would include
-- Recommended MCP servers
-
-### 7. Estimated Scope
-- Total files to be generated
-- Total modules
-- Complexity assessment (simple / moderate / complex)
+### 6. Estimated Scope
+- File count, module count, complexity
 
 ---
 
-## Output Format
+## STEP 3: OFFER NEXT STEP
 
-Present the blueprint in a clean, readable format. Use ASCII diagrams and tables.
+> Ready to generate this framework? Say "generate it" or run `/ClawOS:create`.
+> Want to adjust something? Just tell me what to change.
 
-At the end, tell the user:
-> To generate this framework, run `/ClawOS:create` and reference this blueprint.
-> Or say "generate it" to proceed directly.
-
-If the user says "generate it", proceed to read the full `/ClawOS:create` command logic from `.claude/commands/ClawOS/create.md` and execute phases 4-6 (Generate, Integrate, Validate).
+If the user says "generate it", execute the full generation pipeline from STEP 4 of `/ClawOS:create`.

@@ -542,6 +542,136 @@ class BlueprintEngine {
   }
 
   /**
+   * Compose agent definitions for a team-replacement blueprint.
+   *
+   * Given a list of agent role names, generates structured agent specs with
+   * inferred capabilities, personas, and file paths.
+   *
+   * @param {string} projectName - The project name.
+   * @param {string[]} agentNames - List of agent role names (e.g. ["code-reviewer", "qa-tester"]).
+   * @returns {{name: string, persona: string, capabilities: string[], filePath: string}[]}
+   */
+  composeAgents(projectName, agentNames) {
+    if (!agentNames || agentNames.length === 0) return [];
+
+    return agentNames.map((name) => {
+      const slug = name.toLowerCase().replace(/\s+/g, '-');
+      return {
+        name: slug,
+        persona: this.#generatePersona(name),
+        capabilities: this.#inferCapabilities(name),
+        filePath: `${projectName}/src/agents/${slug}.agent.js`,
+      };
+    });
+  }
+
+  /**
+   * Compose workflow definitions for a team-replacement blueprint.
+   *
+   * Given a list of workflow names, generates structured workflow specs with
+   * inferred phases, dependencies, and file paths.
+   *
+   * @param {string} projectName - The project name.
+   * @param {string[]} workflowNames - List of workflow names.
+   * @param {string[]} [availableAgents=[]] - Agent names available for assignment.
+   * @returns {{name: string, phases: {name: string, agent: string|null, description: string}[], filePath: string}[]}
+   */
+  composeWorkflows(projectName, workflowNames, availableAgents = []) {
+    if (!workflowNames || workflowNames.length === 0) return [];
+
+    return workflowNames.map((name) => {
+      const slug = name.toLowerCase().replace(/\s+/g, '-');
+      return {
+        name: slug,
+        phases: this.#inferPhases(name, availableAgents),
+        filePath: `${projectName}/src/workflows/${slug}.workflow.js`,
+      };
+    });
+  }
+
+  /**
+   * Enhanced compose that supports team-replacement profiles with agents and workflows.
+   *
+   * @param {RequirementsProfile} profile
+   * @returns {Blueprint}
+   */
+  composeWithTeam(profile) {
+    const blueprint = this.compose(profile);
+
+    const teamReplacement = profile.teamReplacement || profile.extra?.teamReplacement;
+    if (!teamReplacement || !teamReplacement.enabled) return blueprint;
+
+    const agents = teamReplacement.agents || [];
+    const workflows = teamReplacement.workflows || [];
+    const projectName = profile.name;
+
+    // Add agent directories and files
+    if (agents.length > 0) {
+      blueprint.structure.directories.push(`${projectName}/src/agents`);
+      const agentSpecs = this.composeAgents(projectName, agents);
+      for (const agent of agentSpecs) {
+        blueprint.structure.files.push({
+          path: agent.filePath,
+          description: `${capitalize(agent.name)} agent — ${agent.persona}`,
+          template: 'agent',
+        });
+      }
+      blueprint.modules.push({
+        name: 'agents',
+        path: `${projectName}/src/agents`,
+        responsibility: 'Autonomous agent definitions with personas and capabilities',
+        dependencies: ['core'],
+        exports: agentSpecs.map((a) => `${capitalize(a.name)}Agent`),
+      });
+    }
+
+    // Add workflow directories and files
+    if (workflows.length > 0) {
+      blueprint.structure.directories.push(`${projectName}/src/workflows`);
+      const workflowSpecs = this.composeWorkflows(projectName, workflows, agents);
+      for (const wf of workflowSpecs) {
+        blueprint.structure.files.push({
+          path: wf.filePath,
+          description: `${capitalize(wf.name)} workflow — ${wf.phases.length} phases`,
+          template: 'workflow',
+        });
+      }
+      blueprint.modules.push({
+        name: 'workflows',
+        path: `${projectName}/src/workflows`,
+        responsibility: 'Multi-phase workflow orchestration with agent assignment',
+        dependencies: ['agents', 'core'],
+        exports: workflowSpecs.map((w) => `${capitalize(w.name)}Workflow`),
+      });
+    }
+
+    // Add orchestrator if both agents and workflows exist
+    if (agents.length > 0 && workflows.length > 0) {
+      blueprint.structure.files.push({
+        path: `${projectName}/src/orchestrator.js`,
+        description: 'Central orchestrator — dispatches tasks to agents and runs workflows',
+        template: 'orchestrator',
+      });
+      blueprint.modules.push({
+        name: 'orchestrator',
+        path: `${projectName}/src/orchestrator.js`,
+        responsibility: 'Coordinates agents and workflows, dispatches tasks',
+        dependencies: ['agents', 'workflows'],
+        exports: ['Orchestrator', 'createOrchestrator'],
+      });
+    }
+
+    // Update metadata
+    blueprint.structure.directories = unique(blueprint.structure.directories).sort();
+    blueprint.metadata.estimatedFiles = blueprint.structure.files.length;
+    if (agents.length > 3 || workflows.length > 2) {
+      blueprint.metadata.complexity = 'high';
+    }
+
+    return blueprint;
+  }
+
+  /**
    * Return the list of known archetypes and their metadata.
    * @returns {Record<Archetype, {layers: string[], complexity: string, description: string}>}
    */
@@ -631,6 +761,167 @@ class BlueprintEngine {
     if (!this.#currentBlueprint) {
       throw new Error('No blueprint composed yet. Call compose(profile) first.');
     }
+  }
+
+  /**
+   * Generate a persona description for an agent role.
+   * @param {string} roleName
+   * @returns {string}
+   */
+  #generatePersona(roleName) {
+    const lower = roleName.toLowerCase();
+    const PERSONA_MAP = {
+      'code-review': 'Senior code reviewer focused on quality, security, and best practices',
+      'qa': 'Quality assurance specialist who designs and runs test strategies',
+      'tester': 'Quality assurance specialist who designs and runs test strategies',
+      'architect': 'Software architect who designs scalable, maintainable systems',
+      'frontend': 'Frontend specialist focused on UI/UX, accessibility, and performance',
+      'backend': 'Backend engineer focused on APIs, data, and system reliability',
+      'devops': 'DevOps engineer focused on CI/CD, infrastructure, and deployment',
+      'security': 'Security analyst focused on vulnerability detection and hardening',
+      'docs': 'Technical writer who creates clear, comprehensive documentation',
+      'documentation': 'Technical writer who creates clear, comprehensive documentation',
+      'pm': 'Project manager who tracks progress, priorities, and deadlines',
+      'project-manager': 'Project manager who tracks progress, priorities, and deadlines',
+      'designer': 'UI/UX designer focused on user experience and visual design',
+      'data': 'Data engineer focused on pipelines, analytics, and data quality',
+      'analyst': 'Business analyst who gathers requirements and translates to specs',
+      'support': 'Support specialist who handles issues, triages bugs, and communicates with users',
+      'marketing': 'Marketing specialist focused on messaging, content, and growth',
+    };
+
+    for (const [key, persona] of Object.entries(PERSONA_MAP)) {
+      if (lower.includes(key)) return persona;
+    }
+    return `Specialist agent for ${roleName} tasks`;
+  }
+
+  /**
+   * Infer capabilities for an agent based on its role name.
+   * @param {string} roleName
+   * @returns {string[]}
+   */
+  #inferCapabilities(roleName) {
+    const lower = roleName.toLowerCase();
+    const CAPABILITY_MAP = {
+      'code-review': ['read-code', 'analyze-patterns', 'suggest-fixes', 'check-style'],
+      'qa': ['write-tests', 'run-tests', 'analyze-coverage', 'report-bugs'],
+      'tester': ['write-tests', 'run-tests', 'analyze-coverage', 'report-bugs'],
+      'architect': ['design-systems', 'create-diagrams', 'review-architecture', 'define-patterns'],
+      'frontend': ['build-ui', 'style-components', 'handle-state', 'optimize-performance'],
+      'backend': ['build-api', 'manage-data', 'handle-auth', 'optimize-queries'],
+      'devops': ['setup-ci', 'configure-deploy', 'monitor-infra', 'manage-containers'],
+      'security': ['scan-vulnerabilities', 'review-auth', 'audit-dependencies', 'harden-config'],
+      'docs': ['write-docs', 'generate-api-ref', 'create-guides', 'maintain-changelog'],
+      'documentation': ['write-docs', 'generate-api-ref', 'create-guides', 'maintain-changelog'],
+      'pm': ['track-tasks', 'prioritize-backlog', 'report-status', 'manage-sprints'],
+      'project-manager': ['track-tasks', 'prioritize-backlog', 'report-status', 'manage-sprints'],
+      'designer': ['create-mockups', 'design-components', 'define-tokens', 'audit-accessibility'],
+      'data': ['build-pipelines', 'transform-data', 'analyze-quality', 'optimize-queries'],
+      'analyst': ['gather-requirements', 'write-specs', 'analyze-impact', 'create-user-stories'],
+      'support': ['triage-issues', 'diagnose-bugs', 'write-responses', 'track-incidents'],
+      'marketing': ['create-content', 'analyze-metrics', 'manage-campaigns', 'write-copy'],
+    };
+
+    for (const [key, caps] of Object.entries(CAPABILITY_MAP)) {
+      if (lower.includes(key)) return caps;
+    }
+    return ['execute-tasks', 'report-results', 'collaborate'];
+  }
+
+  /**
+   * Infer workflow phases based on workflow name and available agents.
+   * @param {string} workflowName
+   * @param {string[]} availableAgents
+   * @returns {{name: string, agent: string|null, description: string}[]}
+   */
+  #inferPhases(workflowName, availableAgents) {
+    const lower = workflowName.toLowerCase();
+
+    const WORKFLOW_PHASES = {
+      'development': [
+        { name: 'plan', description: 'Analyze requirements and plan implementation' },
+        { name: 'implement', description: 'Write code following the plan' },
+        { name: 'review', description: 'Review code for quality and correctness' },
+        { name: 'test', description: 'Run tests and validate functionality' },
+      ],
+      'deploy': [
+        { name: 'build', description: 'Build and package the application' },
+        { name: 'test', description: 'Run pre-deployment validation' },
+        { name: 'stage', description: 'Deploy to staging environment' },
+        { name: 'release', description: 'Promote to production' },
+      ],
+      'review': [
+        { name: 'analyze', description: 'Analyze changes and context' },
+        { name: 'check-quality', description: 'Run quality and style checks' },
+        { name: 'check-security', description: 'Run security analysis' },
+        { name: 'report', description: 'Generate review summary' },
+      ],
+      'onboard': [
+        { name: 'setup', description: 'Configure environment and access' },
+        { name: 'document', description: 'Generate onboarding documentation' },
+        { name: 'verify', description: 'Verify setup and access' },
+      ],
+      'bug-fix': [
+        { name: 'diagnose', description: 'Reproduce and diagnose the issue' },
+        { name: 'fix', description: 'Implement the fix' },
+        { name: 'test', description: 'Verify the fix with tests' },
+        { name: 'document', description: 'Update docs and changelog' },
+      ],
+      'content': [
+        { name: 'research', description: 'Research topic and gather information' },
+        { name: 'draft', description: 'Create initial content draft' },
+        { name: 'review', description: 'Review and edit content' },
+        { name: 'publish', description: 'Format and publish content' },
+      ],
+    };
+
+    // Find best matching workflow template
+    let phases = null;
+    for (const [key, template] of Object.entries(WORKFLOW_PHASES)) {
+      if (lower.includes(key)) {
+        phases = template;
+        break;
+      }
+    }
+
+    if (!phases) {
+      phases = [
+        { name: 'initialize', description: 'Set up context and inputs' },
+        { name: 'execute', description: 'Perform the main task' },
+        { name: 'validate', description: 'Validate results' },
+        { name: 'finalize', description: 'Clean up and report' },
+      ];
+    }
+
+    // Assign agents to phases using simple keyword matching
+    return phases.map((phase) => {
+      let assignedAgent = null;
+      const phaseLower = phase.name.toLowerCase();
+
+      for (const agent of availableAgents) {
+        const agentLower = agent.toLowerCase();
+        if (
+          (phaseLower.includes('review') && agentLower.includes('review')) ||
+          (phaseLower.includes('test') && (agentLower.includes('qa') || agentLower.includes('test'))) ||
+          (phaseLower.includes('implement') && (agentLower.includes('backend') || agentLower.includes('frontend'))) ||
+          (phaseLower.includes('document') && (agentLower.includes('doc') || agentLower.includes('writer'))) ||
+          (phaseLower.includes('security') && agentLower.includes('security')) ||
+          (phaseLower.includes('deploy') && agentLower.includes('devops')) ||
+          (phaseLower.includes('build') && agentLower.includes('devops')) ||
+          (phaseLower.includes('plan') && (agentLower.includes('architect') || agentLower.includes('pm')))
+        ) {
+          assignedAgent = agent;
+          break;
+        }
+      }
+
+      return {
+        name: phase.name,
+        agent: assignedAgent,
+        description: phase.description,
+      };
+    });
   }
 }
 

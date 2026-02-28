@@ -2164,6 +2164,520 @@ export class CodeGenerator {
     const kebab = CodeGenerator.#toKebab(name);
     return kebab.replace(/-(\w)/g, (_, c) => c.toUpperCase());
   }
+
+  // ---------------------------------------------------------------------------
+  // Agent & Workflow generation (team-replacement frameworks)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Generate an agent definition file.
+   *
+   * @param {Object} agentSpec
+   * @param {string} agentSpec.id        - Agent identifier (kebab-case).
+   * @param {string} agentSpec.name      - Human-readable agent name.
+   * @param {string} agentSpec.role      - Agent's role description.
+   * @param {string[]} agentSpec.capabilities - What the agent can do.
+   * @param {string} [agentSpec.persona] - Optional persona description.
+   * @param {SupportedLanguage} [language='javascript']
+   * @returns {string} Complete agent definition source code.
+   */
+  generateAgent(agentSpec, language = 'javascript') {
+    const adapter = CodeGenerator.#getAdapter(language);
+    const className = agentSpec.name.replace(/[^a-zA-Z0-9]/g, '') + 'Agent';
+    const caps = agentSpec.capabilities.map(c => `'${c}'`).join(', ');
+
+    if (language === 'python') {
+      return `"""
+Agent: ${agentSpec.name}
+Role: ${agentSpec.role}
+${agentSpec.persona ? `Persona: ${agentSpec.persona}` : ''}
+"""
+
+class ${className}:
+    """${agentSpec.role}"""
+
+    def __init__(self, config=None):
+        self.id = '${agentSpec.id}'
+        self.name = '${agentSpec.name}'
+        self.role = '${agentSpec.role}'
+        self.capabilities = [${caps}]
+        self.config = config or {}
+        self.history = []
+
+    async def execute(self, task, context=None):
+        """Execute a task within this agent's capabilities."""
+        if task.get('type') not in self.capabilities:
+            raise ValueError(f"Task type '{task.get('type')}' not in capabilities: {self.capabilities}")
+
+        self.history.append({'task': task, 'status': 'started'})
+
+        try:
+            result = await self._process(task, context or {})
+            self.history[-1]['status'] = 'completed'
+            self.history[-1]['result'] = result
+            return result
+        except Exception as e:
+            self.history[-1]['status'] = 'failed'
+            self.history[-1]['error'] = str(e)
+            raise
+
+    async def _process(self, task, context):
+        """Process the task. Override in subclasses for custom logic."""
+        return {'agent': self.id, 'task': task.get('type'), 'status': 'processed'}
+
+    def get_system_prompt(self):
+        """Return the system prompt for this agent when used with an LLM."""
+        return f"""You are {self.name}, a {self.role}.
+Your capabilities: {', '.join(self.capabilities)}.
+${agentSpec.persona ? `Personality: ${agentSpec.persona}` : ''}
+Always stay within your defined role and capabilities."""
+
+    def get_status(self):
+        """Return current agent status."""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'tasks_completed': len([h for h in self.history if h['status'] == 'completed']),
+            'tasks_failed': len([h for h in self.history if h['status'] == 'failed']),
+        }
+`;
+    }
+
+    // JavaScript / TypeScript
+    const tsTypes = language === 'typescript' ? `
+/** @typedef {{ type: string, data?: any, priority?: 'low'|'medium'|'high' }} AgentTask */
+/** @typedef {{ [key: string]: any }} AgentContext */
+/** @typedef {{ agent: string, task: string, status: string, output?: any }} AgentResult */
+` : '';
+
+    return `${this.#fileHeader(agentSpec.id, `Agent: ${agentSpec.name} — ${agentSpec.role}`, adapter)}
+${tsTypes}
+import { EventEmitter } from 'node:events';
+
+/**
+ * ${agentSpec.name} — ${agentSpec.role}
+ * ${agentSpec.persona || ''}
+ *
+ * Capabilities: ${agentSpec.capabilities.join(', ')}
+ */
+export class ${className} extends EventEmitter {
+  /** @type {string} */
+  id = '${agentSpec.id}';
+
+  /** @type {string} */
+  name = '${agentSpec.name}';
+
+  /** @type {string} */
+  role = '${agentSpec.role}';
+
+  /** @type {string[]} */
+  capabilities = [${caps}];
+
+  /** @type {Array<{task: object, status: string, result?: any, error?: string}>} */
+  #history = [];
+
+  /** @type {object} */
+  #config;
+
+  constructor(config = {}) {
+    super();
+    this.#config = config;
+  }
+
+  /**
+   * Execute a task within this agent's capabilities.
+   * @param {{ type: string, data?: any }} task
+   * @param {object} [context={}]
+   * @returns {Promise<{ agent: string, task: string, status: string, output?: any }>}
+   */
+  async execute(task, context = {}) {
+    if (!this.capabilities.includes(task.type)) {
+      throw new Error(\`[\${this.name}] Task type "\${task.type}" not in capabilities: \${this.capabilities.join(', ')}\`);
+    }
+
+    const entry = { task, status: 'started', startedAt: Date.now() };
+    this.#history.push(entry);
+    this.emit('task:start', { agent: this.id, task });
+
+    try {
+      const result = await this.#process(task, context);
+      entry.status = 'completed';
+      entry.result = result;
+      entry.duration = Date.now() - entry.startedAt;
+      this.emit('task:complete', { agent: this.id, task, result, duration: entry.duration });
+      return { agent: this.id, task: task.type, status: 'completed', output: result };
+    } catch (error) {
+      entry.status = 'failed';
+      entry.error = error.message;
+      entry.duration = Date.now() - entry.startedAt;
+      this.emit('task:error', { agent: this.id, task, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Internal task processing. Override in subclasses for custom logic.
+   * @param {{ type: string, data?: any }} task
+   * @param {object} context
+   * @returns {Promise<any>}
+   */
+  async #process(task, context) {
+    return { agent: this.id, task: task.type, status: 'processed', context: Object.keys(context) };
+  }
+
+  /**
+   * Get the system prompt for this agent (for LLM-based execution).
+   * @returns {string}
+   */
+  getSystemPrompt() {
+    return \`You are \${this.name}, a \${this.role}.
+Your capabilities: \${this.capabilities.join(', ')}.
+${agentSpec.persona ? `Personality: ${agentSpec.persona}` : ''}
+Always stay within your defined role and capabilities.
+When given a task, analyze it carefully, execute it thoroughly, and report results clearly.\`;
+  }
+
+  /**
+   * Get agent status and history summary.
+   * @returns {{ id: string, name: string, completed: number, failed: number, history: object[] }}
+   */
+  getStatus() {
+    return {
+      id: this.id,
+      name: this.name,
+      role: this.role,
+      completed: this.#history.filter(h => h.status === 'completed').length,
+      failed: this.#history.filter(h => h.status === 'failed').length,
+      totalTasks: this.#history.length,
+      history: this.#history.slice(-10),
+    };
+  }
+}
+
+export default ${className};
+`;
+  }
+
+  /**
+   * Generate a workflow definition file.
+   *
+   * @param {Object} workflowSpec
+   * @param {string} workflowSpec.id     - Workflow identifier (kebab-case).
+   * @param {string} workflowSpec.name   - Human-readable name.
+   * @param {string[]} workflowSpec.phases - Ordered phase names.
+   * @param {SupportedLanguage} [language='javascript']
+   * @returns {string} Complete workflow definition source code.
+   */
+  generateWorkflow(workflowSpec, language = 'javascript') {
+    const adapter = CodeGenerator.#getAdapter(language);
+    const className = workflowSpec.name.replace(/[^a-zA-Z0-9]/g, '') + 'Workflow';
+    const phasesStr = workflowSpec.phases.map(p => `'${p}'`).join(', ');
+
+    return `${this.#fileHeader(workflowSpec.id, `Workflow: ${workflowSpec.name}`, adapter)}
+
+import { EventEmitter } from 'node:events';
+
+/**
+ * ${workflowSpec.name} Workflow
+ *
+ * Phases: ${workflowSpec.phases.join(' → ')}
+ */
+export class ${className} extends EventEmitter {
+  /** @type {string} */
+  id = '${workflowSpec.id}';
+
+  /** @type {string} */
+  name = '${workflowSpec.name}';
+
+  /** @type {string[]} */
+  phases = [${phasesStr}];
+
+  /** @type {'idle'|'running'|'paused'|'completed'|'failed'} */
+  #status = 'idle';
+
+  /** @type {number} */
+  #currentPhaseIndex = -1;
+
+  /** @type {Map<string, any>} */
+  #phaseResults = new Map();
+
+  /** @type {object} */
+  #config;
+
+  constructor(config = {}) {
+    super();
+    this.#config = config;
+  }
+
+  /**
+   * Execute the full workflow sequentially through all phases.
+   * @param {object} [context={}] - Initial context passed to the first phase.
+   * @returns {Promise<{ workflow: string, status: string, phases: object[], duration: number }>}
+   */
+  async execute(context = {}) {
+    if (this.#status === 'running') {
+      throw new Error(\`[\${this.name}] Workflow is already running\`);
+    }
+
+    this.#status = 'running';
+    this.#currentPhaseIndex = -1;
+    this.#phaseResults.clear();
+    const startTime = Date.now();
+
+    this.emit('workflow:start', { workflow: this.id, phases: this.phases });
+
+    let currentContext = { ...context };
+
+    for (let i = 0; i < this.phases.length; i++) {
+      if (this.#status === 'paused') {
+        await this.#waitForResume();
+      }
+      if (this.#status === 'failed') break;
+
+      this.#currentPhaseIndex = i;
+      const phase = this.phases[i];
+
+      this.emit('phase:start', { workflow: this.id, phase, index: i });
+
+      try {
+        const result = await this.#executePhase(phase, currentContext);
+        this.#phaseResults.set(phase, result);
+        currentContext = { ...currentContext, [\`\${phase}Result\`]: result };
+
+        this.emit('phase:complete', { workflow: this.id, phase, index: i, result });
+      } catch (error) {
+        this.#status = 'failed';
+        this.emit('phase:error', { workflow: this.id, phase, index: i, error: error.message });
+        this.emit('workflow:error', { workflow: this.id, phase, error: error.message });
+
+        return {
+          workflow: this.id,
+          status: 'failed',
+          failedPhase: phase,
+          phases: this.#getPhasesSummary(),
+          duration: Date.now() - startTime,
+        };
+      }
+    }
+
+    this.#status = 'completed';
+    const duration = Date.now() - startTime;
+
+    this.emit('workflow:complete', { workflow: this.id, duration, phases: this.#getPhasesSummary() });
+
+    return {
+      workflow: this.id,
+      status: 'completed',
+      phases: this.#getPhasesSummary(),
+      duration,
+    };
+  }
+
+  /**
+   * Pause the workflow after the current phase completes.
+   */
+  pause() {
+    if (this.#status === 'running') this.#status = 'paused';
+  }
+
+  /**
+   * Resume a paused workflow.
+   */
+  resume() {
+    if (this.#status === 'paused') {
+      this.#status = 'running';
+      this.emit('workflow:resume', { workflow: this.id });
+    }
+  }
+
+  /**
+   * Get current workflow status.
+   * @returns {{ id: string, name: string, status: string, currentPhase: string|null, progress: number }}
+   */
+  getStatus() {
+    return {
+      id: this.id,
+      name: this.name,
+      status: this.#status,
+      currentPhase: this.#currentPhaseIndex >= 0 ? this.phases[this.#currentPhaseIndex] : null,
+      progress: this.phases.length > 0
+        ? Math.round((this.#phaseResults.size / this.phases.length) * 100)
+        : 0,
+      phaseResults: Object.fromEntries(this.#phaseResults),
+    };
+  }
+
+  /** @private */
+  async #executePhase(phase, context) {
+    // Default implementation — override or use agent dispatch in real usage
+    return { phase, status: 'completed', timestamp: new Date().toISOString() };
+  }
+
+  /** @private */
+  #getPhasesSummary() {
+    return this.phases.map(p => ({
+      phase: p,
+      status: this.#phaseResults.has(p) ? 'completed' : 'pending',
+      result: this.#phaseResults.get(p) || null,
+    }));
+  }
+
+  /** @private */
+  async #waitForResume() {
+    return new Promise(resolve => {
+      const check = () => {
+        if (this.#status !== 'paused') resolve();
+        else setTimeout(check, 100);
+      };
+      check();
+    });
+  }
+}
+
+export default ${className};
+`;
+  }
+
+  /**
+   * Generate an orchestrator file that coordinates agents through workflows.
+   *
+   * @param {Object[]} agents - Agent specs.
+   * @param {Object[]} workflows - Workflow specs.
+   * @param {SupportedLanguage} [language='javascript']
+   * @returns {string}
+   */
+  generateOrchestrator(agents, workflows, language = 'javascript') {
+    const agentImports = agents.map(a => {
+      const className = a.name.replace(/[^a-zA-Z0-9]/g, '') + 'Agent';
+      return `import { ${className} } from './agents/${a.id}.js';`;
+    }).join('\n');
+
+    const agentInits = agents.map(a => {
+      const className = a.name.replace(/[^a-zA-Z0-9]/g, '') + 'Agent';
+      return `    this.agents.set('${a.id}', new ${className}(config));`;
+    }).join('\n');
+
+    const workflowImports = workflows.map(w => {
+      const className = w.name.replace(/[^a-zA-Z0-9]/g, '') + 'Workflow';
+      return `import { ${className} } from './workflows/${w.id}.js';`;
+    }).join('\n');
+
+    const workflowInits = workflows.map(w => {
+      const className = w.name.replace(/[^a-zA-Z0-9]/g, '') + 'Workflow';
+      return `    this.workflows.set('${w.id}', new ${className}(config));`;
+    }).join('\n');
+
+    return `/**
+ * @fileoverview Orchestrator — Coordinates agents and workflows.
+ * This is the central control plane for the framework.
+ */
+
+import { EventEmitter } from 'node:events';
+${agentImports}
+${workflowImports}
+
+export class Orchestrator extends EventEmitter {
+  /** @type {Map<string, object>} */
+  agents = new Map();
+
+  /** @type {Map<string, object>} */
+  workflows = new Map();
+
+  /** @type {Array<object>} */
+  #executionLog = [];
+
+  constructor(config = {}) {
+    super();
+${agentInits}
+${workflowInits}
+
+    // Wire agent events to orchestrator
+    for (const [id, agent] of this.agents) {
+      agent.on('task:start', (data) => this.emit('agent:task:start', data));
+      agent.on('task:complete', (data) => this.emit('agent:task:complete', data));
+      agent.on('task:error', (data) => this.emit('agent:task:error', data));
+    }
+  }
+
+  /**
+   * Dispatch a task to a specific agent.
+   * @param {string} agentId
+   * @param {{ type: string, data?: any }} task
+   * @param {object} [context={}]
+   * @returns {Promise<any>}
+   */
+  async dispatchToAgent(agentId, task, context = {}) {
+    const agent = this.agents.get(agentId);
+    if (!agent) throw new Error(\`Agent not found: \${agentId}\`);
+
+    const entry = { type: 'agent-dispatch', agentId, task, timestamp: Date.now() };
+    this.#executionLog.push(entry);
+
+    const result = await agent.execute(task, context);
+    entry.result = result;
+    entry.duration = Date.now() - entry.timestamp;
+    return result;
+  }
+
+  /**
+   * Execute a specific workflow.
+   * @param {string} workflowId
+   * @param {object} [context={}]
+   * @returns {Promise<any>}
+   */
+  async runWorkflow(workflowId, context = {}) {
+    const workflow = this.workflows.get(workflowId);
+    if (!workflow) throw new Error(\`Workflow not found: \${workflowId}\`);
+
+    const entry = { type: 'workflow-run', workflowId, timestamp: Date.now() };
+    this.#executionLog.push(entry);
+
+    const result = await workflow.execute(context);
+    entry.result = result;
+    entry.duration = Date.now() - entry.timestamp;
+    return result;
+  }
+
+  /**
+   * Run the full orchestration pipeline — all workflows in sequence.
+   * @param {object} [context={}]
+   * @returns {Promise<{ status: string, workflows: object[], totalDuration: number }>}
+   */
+  async runAll(context = {}) {
+    const startTime = Date.now();
+    this.emit('orchestration:start', { workflows: [...this.workflows.keys()] });
+
+    const results = [];
+    let currentContext = { ...context };
+
+    for (const [id, workflow] of this.workflows) {
+      const result = await this.runWorkflow(id, currentContext);
+      results.push(result);
+      currentContext = { ...currentContext, [\`\${id}Result\`]: result };
+    }
+
+    const totalDuration = Date.now() - startTime;
+    this.emit('orchestration:complete', { totalDuration, workflows: results });
+
+    return { status: 'completed', workflows: results, totalDuration };
+  }
+
+  /**
+   * Get overall orchestration status.
+   * @returns {object}
+   */
+  getStatus() {
+    return {
+      agents: [...this.agents.entries()].map(([id, a]) => ({ id, ...a.getStatus() })),
+      workflows: [...this.workflows.entries()].map(([id, w]) => ({ id, ...w.getStatus() })),
+      executionLog: this.#executionLog.slice(-20),
+    };
+  }
+}
+
+export default Orchestrator;
+`;
+  }
 }
 
 export default CodeGenerator;
